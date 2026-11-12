@@ -57,7 +57,7 @@ th, td { border: 1px solid #e2e8f0; padding: 9px; text-align: left; vertical-ali
 th { background-color: #0284c7; color: white; }
 .th-salidas { background-color: #059669; }
 
-/* Semáforos limpios sin texto de color */
+/* Semáforos limpios */
 .semaforo-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 
@@ -108,17 +108,15 @@ th { background-color: #0284c7; color: white; }
 
   <!-- PESTAÑAS -->
   <div class="tabs">
-    <!-- Embarques -->
     <button id="btn-tab-envios" class="tab-btn" onclick="switchTab('envios')">1. Solicitud de Embarque</button>
     <button id="btn-tab-general" class="tab-btn" onclick="switchTab('general')">2. Historial de Carga</button>
     <button id="btn-tab-clientes" class="tab-btn" onclick="switchTab('clientes')">3. Catálogo de Clientes (GPS)</button>
     
-    <!-- Almacén -->
     <button id="btn-tab-salidas" class="tab-btn" onclick="switchTab('salidas')">1. Confirmación de Salida ⏱️</button>
     <button id="btn-tab-confirmadas" class="tab-btn" onclick="switchTab('confirmadas')">2. Historial de Confirmaciones 📅</button>
   </div>
 
-  <!-- OFICINA / EMBARQUES 1: SOLICITUD DE EMBARQUE -->
+  <!-- EMBARQUES 1: SOLICITUD DE EMBARQUE -->
   <div id="panel-envios" class="panel">
     <h3 id="titulo-form-envio">Nueva Solicitud de Embarque</h3>
     <form id="form-envio" class="app-form" onsubmit="guardarEnvio(event)">
@@ -149,7 +147,7 @@ th { background-color: #0284c7; color: white; }
     </form>
   </div>
 
-  <!-- OFICINA / EMBARQUES 2: HISTORIAL GENERAL DE CARGA -->
+  <!-- EMBARQUES 2: HISTORIAL GENERAL DE CARGA -->
   <div id="panel-general" class="panel">
     <h3>Historial General de Carga (Monitoreo de Oficina)</h3>
     <div class="table-responsive">
@@ -172,7 +170,7 @@ th { background-color: #0284c7; color: white; }
     </div>
   </div>
 
-  <!-- OFICINA / EMBARQUES 3: ALTA Y EDICIÓN DE CLIENTES CON BUSCADOR GPS -->
+  <!-- EMBARQUES 3: ALTA Y EDICIÓN DE CLIENTES -->
   <div id="panel-clientes" class="panel">
     <h3 id="titulo-form-cliente">Alta de Cliente con Cálculo de Ruta (Maps / GPS)</h3>
     <p style="font-size: 13px; color: #555;">Busca la dirección o parque industrial. La distancia y horas por carretera desde POSCO SLP se calculan automáticamente.</p>
@@ -220,7 +218,7 @@ th { background-color: #0284c7; color: white; }
     </div>
   </div>
 
-  <!-- ALMACÉN 1: CONFIRMACIÓN DE SALIDA DE EMBARQUE -->
+  <!-- ALMACÉN 1: CONFIRMACIÓN DE SALIDA -->
   <div id="panel-salidas" class="panel">
     <h3>Confirmación de Salida de Embarque (Patio y Andén)</h3>
     <div class="table-responsive">
@@ -240,7 +238,7 @@ th { background-color: #0284c7; color: white; }
     </div>
   </div>
 
-  <!-- ALMACÉN 2: HISTORIAL DE CONFIRMACIONES POR FECHA -->
+  <!-- ALMACÉN 2: HISTORIAL DE CONFIRMACIONES -->
   <div id="panel-confirmadas" class="panel">
     <h3>Historial de Confirmaciones</h3>
     
@@ -275,7 +273,6 @@ th { background-color: #0284c7; color: white; }
 <script>
 const ORIGEN_POSCO = { lat: 22.0833, lon: -100.8667 };
 
-// Catálogo inicial de clientes
 let catalogoClientes = [
   { nombre: "Mabe Saltillo", direccion: "Blvd. Isidro López Zertuche, Saltillo, Coahuila", trayecto: 4.0 },
   { nombre: "Stellantis Toluca", direccion: "Av. Industria Automotriz, Toluca, Edo. Méx.", trayecto: 4.5 },
@@ -363,7 +360,6 @@ function switchTab(tabId) {
   if (botonActivo) botonActivo.classList.add('active');
 }
 
-/* BUSCADOR DE DIRECCIÓN ESTILO MAPS/WAZE (Nominatim) */
 function buscarDireccionGPS(consulta) {
   clearTimeout(timeoutBusqueda);
   const lista = document.getElementById('sugerencias-gps');
@@ -398,7 +394,6 @@ function buscarDireccionGPS(consulta) {
   }, 350);
 }
 
-/* CÁLCULO DE RUTA EN TIEMPO REAL DESDE POSCO MPPC SLP (OSRM) */
 function seleccionarDestino(nombreCompleto, destLat, destLon) {
   document.getElementById('cliente-direccion-input').value = nombreCompleto;
   document.getElementById('sugerencias-gps').style.display = 'none';
@@ -439,7 +434,6 @@ function calcularHoraLimiteSalida(fechaEntrega, horaEntrega, horasTrayecto) {
   return { horaStr, fechaStr, timestamp: fechaObj.getTime() };
 }
 
-/* SEMÁFORO VISUAL LIMPIO SIN TEXTO DE COLOR */
 function evaluarSemaforo(item) {
   if (item.salidaReal) {
     return { clase: 'sem-gris', texto: 'Salida confirmada' };
@@ -461,7 +455,6 @@ function evaluarSemaforo(item) {
   }
 }
 
-/* ACTUALIZAR SELECTOR DE CLIENTES EN FORMULARIO DE EMBARQUES */
 function actualizarSelectClientes() {
   const select = document.getElementById('envio-cliente');
   select.innerHTML = '<option value="">-- Selecciona un Cliente del Catálogo --</option>';
@@ -473,7 +466,6 @@ function actualizarSelectClientes() {
   });
 }
 
-/* GESTIÓN DE EMBARQUES (GUARDAR / EDITAR / ELIMINAR) */
 function guardarEnvio(e) {
   e.preventDefault();
   const editIndex = parseInt(document.getElementById('envio-edit-index').value);
@@ -571,7 +563,6 @@ function eliminarEnvio(index) {
   }
 }
 
-/* GESTIÓN DE CLIENTES (GUARDAR / EDITAR / ELIMINAR) */
 function guardarCliente(e) {
   e.preventDefault();
   const editIndex = parseInt(document.getElementById('cliente-edit-index').value);
@@ -701,7 +692,6 @@ function renderizarTablas() {
   embarques.forEach((item, index) => {
     const semaforo = evaluarSemaforo(item);
 
-    // 1. Vista Embarques: Historial General con botones de Editar y Eliminar
     if (tbodyGeneral) {
       const trGen = document.createElement('tr');
       trGen.innerHTML = `
@@ -725,7 +715,6 @@ function renderizarTablas() {
       tbodyGeneral.appendChild(trGen);
     }
 
-    // 2. Vista Almacén: Confirmación de Salida (SIN botones de editar/eliminar)
     if (!item.salidaReal && tbodySalidasPendientes) {
       const trPend = document.createElement('tr');
       const esAnden = item.estado === 'En Andén';
@@ -747,7 +736,6 @@ function renderizarTablas() {
       tbodySalidasPendientes.appendChild(trPend);
     }
 
-    // 3. Vista Almacén: Historial de Confirmaciones (Filtrable por Fecha)
     if (item.salidaReal && tbodySalidasConfirmadas) {
       if (fechaFiltroSeleccionada && item.fechaSalidaReal !== fechaFiltroSeleccionada) {
         return;
