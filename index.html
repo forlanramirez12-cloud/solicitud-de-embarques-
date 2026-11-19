@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Control de Embarques - POSCO MPPC SLP</title>
+
+<!-- Leaflet CSS para mapa interactivo tipo Maps/Waze -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
 <style>
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 15px; background-color: #f4f7f6; color: #333; }
 h2 { color: #1e3a8a; margin-top: 5px; }
@@ -30,7 +34,8 @@ h2 { color: #1e3a8a; margin-top: 5px; }
 .panel { display: none; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
 .panel.active { display: block; }
 .app-form { display: grid; gap: 12px; max-width: 520px; margin-bottom: 25px; }
-input, select, textarea { padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; }
+.app-form-wide { max-width: 680px; }
+input, select, textarea { padding: 10px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 14px; width: 100%; box-sizing: border-box; }
 button { border: none; padding: 11px; cursor: pointer; font-weight: bold; border-radius: 4px; }
 .btn-submit { background: #10b981; color: white; font-size: 15px; }
 
@@ -43,13 +48,54 @@ button { border: none; padding: 11px; cursor: pointer; font-weight: bold; border
 .btn-descargar { background: #1e293b; color: white; padding: 8px 14px; border-radius: 4px; font-size: 13px; cursor: pointer; }
 .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 15px; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; }
 .filter-bar label { font-size: 13px; font-weight: bold; }
-.filter-bar input[type="date"] { padding: 6px 10px; font-size: 13px; }
+.filter-bar input[type="date"] { padding: 6px 10px; font-size: 13px; width: auto; }
 
-/* Buscador GPS */
+/* Buscador GPS estilo Google Maps / Waze */
 .search-container { position: relative; width: 100%; }
-.suggestions-list { position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #cbd5e1; border-radius: 0 0 4px 4px; max-height: 200px; overflow-y: auto; z-index: 1000; box-shadow: 0 4px 6px rgba(0,0,0,0.1); list-style: none; padding: 0; margin: 0; display: none; }
-.suggestions-list li { padding: 10px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid #f1f5f9; }
-.suggestions-list li:hover { background-color: #f8fafc; color: #0284c7; }
+.search-input-wrap { position: relative; display: flex; align-items: center; }
+.search-input-wrap .search-icon { position: absolute; left: 12px; font-size: 16px; pointer-events: none; }
+.search-input-wrap input { padding-left: 36px; padding-right: 36px; border-radius: 8px; border: 1.5px solid #cbd5e1; transition: border-color 0.2s, box-shadow 0.2s; }
+.search-input-wrap input:focus { outline: none; border-color: #0284c7; box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15); }
+.btn-clear-search { position: absolute; right: 8px; background: transparent; color: #64748b; padding: 4px 8px; font-size: 14px; display: none; }
+.btn-clear-search:hover { color: #0f172a; }
+
+.suggestions-list {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+  background: white; border: 1px solid #cbd5e1; border-radius: 8px;
+  max-height: 260px; overflow-y: auto; z-index: 1100;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.12); list-style: none; padding: 4px 0; margin: 0; display: none;
+}
+.suggestions-list li {
+  padding: 10px 14px; cursor: pointer; display: flex; align-items: flex-start; gap: 10px;
+  border-bottom: 1px solid #f1f5f9; transition: background 0.15s;
+}
+.suggestions-list li:last-child { border-bottom: none; }
+.suggestions-list li:hover { background-color: #f0f9ff; }
+.sug-icon { font-size: 16px; margin-top: 2px; flex-shrink: 0; }
+.sug-text { display: flex; flex-direction: column; min-width: 0; }
+.sug-title { font-size: 13.5px; font-weight: 600; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sug-sub { font-size: 12px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sug-loading { padding: 12px; text-align: center; font-size: 13px; color: #64748b; cursor: default !important; }
+
+/* Mapa Interactivo y Botones Externos */
+.map-wrapper {
+  border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #e2e8f0;
+}
+.map-toolbar {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px;
+  background: #f8fafc; padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #475569;
+}
+.map-ext-links { display: flex; gap: 6px; }
+.btn-ext-map {
+  display: inline-flex; align-items: center; gap: 5px; text-decoration: none;
+  padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: 600; color: white;
+  transition: opacity 0.15s;
+}
+.btn-ext-map:hover { opacity: 0.9; }
+.btn-gmaps { background: #1a73e8; }
+.btn-waze { background: #00b0ff; }
+.btn-ext-map.disabled { opacity: 0.45; pointer-events: none; }
+#mapa-cliente { width: 100%; height: 290px; z-index: 1; }
 
 .table-responsive { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; min-width: 820px; }
@@ -172,19 +218,39 @@ th { background-color: #0284c7; color: white; }
 
   <!-- EMBARQUES 3: ALTA Y EDICIÓN DE CLIENTES -->
   <div id="panel-clientes" class="panel">
-    <h3 id="titulo-form-cliente">Alta de Cliente con Cálculo de Ruta (Maps / GPS)</h3>
-    <p style="font-size: 13px; color: #555;">Busca la dirección o parque industrial. La distancia y horas por carretera desde POSCO SLP se calculan automáticamente.</p>
+    <h3 id="titulo-form-cliente">Alta de Cliente con Cálculo de Ruta (Maps / Waze)</h3>
+    <p style="font-size: 13px; color: #555; margin-top: 0;">
+      Busca por nombre, parque industrial, dirección o pega coordenadas / link de Google Maps. También puedes <b>hacer clic o arrastrar el pin en el mapa</b> para ajustar el destino exacto.
+    </p>
     
-    <form id="form-cliente" class="app-form" onsubmit="guardarCliente(event)">
+    <form id="form-cliente" class="app-form app-form-wide" onsubmit="guardarCliente(event)">
       <input type="hidden" id="cliente-edit-index" value="-1">
+      <input type="hidden" id="cliente-lat" value="">
+      <input type="hidden" id="cliente-lon" value="">
 
       <label for="cliente-nombre"><b>Nombre del Cliente / Empresa:</b></label>
       <input type="text" id="cliente-nombre" placeholder="Ej: Mabe Saltillo" required>
 
-      <label for="cliente-direccion-input"><b>Buscar Dirección de Destino:</b></label>
-      <div class="search-container">
-        <input type="text" id="cliente-direccion-input" placeholder="Escribe la dirección, parque industrial o ciudad..." autocomplete="off" oninput="buscarDireccionGPS(this.value)" required>
+      <label for="cliente-direccion-input"><b>Buscar Destino (Estilo Google Maps / Waze):</b></label>
+      <div class="search-container" id="search-container-gps">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="cliente-direccion-input" placeholder="Busca planta, parque industrial, dirección o pega link/coordenadas..." autocomplete="off" oninput="buscarDireccionGPS(this.value)" required>
+          <button type="button" id="btn-clear-search" class="btn-clear-search" onclick="limpiarBusquedaGPS()" title="Limpiar búsqueda">✕</button>
+        </div>
         <ul id="sugerencias-gps" class="suggestions-list"></ul>
+      </div>
+
+      <!-- Mapa Interactivo -->
+      <div class="map-wrapper">
+        <div class="map-toolbar">
+          <span>📍 Haz clic en el mapa o arrastra el pin rojo para fijar el destino</span>
+          <div class="map-ext-links">
+            <a id="link-gmaps" href="#" target="_blank" rel="noopener" class="btn-ext-map btn-gmaps disabled">🗺️ Google Maps</a>
+            <a id="link-waze" href="#" target="_blank" rel="noopener" class="btn-ext-map btn-waze disabled">🚗 Waze</a>
+          </div>
+        </div>
+        <div id="mapa-cliente"></div>
       </div>
 
       <div style="display: flex; gap: 10px;">
@@ -270,19 +336,28 @@ th { background-color: #0284c7; color: white; }
 
 </div>
 
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
 const ORIGEN_POSCO = { lat: 22.0833, lon: -100.8667 };
 
 let catalogoClientes = [
-  { nombre: "Mabe Saltillo", direccion: "Blvd. Isidro López Zertuche, Saltillo, Coahuila", trayecto: 4.0 },
-  { nombre: "Stellantis Toluca", direccion: "Av. Industria Automotriz, Toluca, Edo. Méx.", trayecto: 4.5 },
-  { nombre: "DN Automotive SLP", direccion: "Parque Industrial Logistik, Villa de Reyes, SLP", trayecto: 0.7 }
+  { nombre: "Mabe Saltillo", direccion: "Blvd. Isidro López Zertuche, Saltillo, Coahuila", trayecto: 4.0, lat: 25.4519, lon: -100.9927 },
+  { nombre: "Stellantis Toluca", direccion: "Av. Industria Automotriz, Toluca, Edo. Méx.", trayecto: 4.5, lat: 19.3025, lon: -99.6094 },
+  { nombre: "DN Automotive SLP", direccion: "Parque Industrial Logistik, Villa de Reyes, SLP", trayecto: 0.7, lat: 21.8692, lon: -100.8965 }
 ];
 
 let embarques = [];
 let usuarioActual = '';
 let fechaFiltroSeleccionada = '';
 let timeoutBusqueda = null;
+
+// Variables del mapa interactivo
+let mapaCliente = null;
+let marcadorOrigen = null;
+let marcadorDestino = null;
+let capaRuta = null;
 
 const iconoOjoAbierto = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
 const iconoOjoCerrado = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
@@ -358,68 +433,290 @@ function switchTab(tabId) {
   const botonActivo = document.getElementById('btn-tab-' + tabId);
   if (panelActivo) panelActivo.classList.add('active');
   if (botonActivo) botonActivo.classList.add('active');
+
+  if (tabId === 'clientes') {
+    inicializarMapaCliente();
+    setTimeout(() => {
+      if (mapaCliente) mapaCliente.invalidateSize();
+    }, 150);
+  }
+}
+
+/* ================= MAPA Y BUSCADOR ESTILO GOOGLE MAPS / WAZE ================= */
+
+function crearPinIcono(colorHex) {
+  return L.divIcon({
+    className: 'custom-pin',
+    html: `<div style="background:${colorHex}; width:18px; height:18px; border-radius:50%; border:3px solid white; box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>`,
+    iconSize: [18, 18],
+    iconAnchor: [9, 9]
+  });
+}
+
+function inicializarMapaCliente() {
+  if (mapaCliente) return;
+
+  mapaCliente = L.map('mapa-cliente').setView([ORIGEN_POSCO.lat, ORIGEN_POSCO.lon], 7);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(mapaCliente);
+
+  marcadorOrigen = L.marker([ORIGEN_POSCO.lat, ORIGEN_POSCO.lon], { icon: crearPinIcono('#0284c7') })
+    .addTo(mapaCliente)
+    .bindPopup('<b>Origen:</b> POSCO MPPC SLP');
+
+  // Permitir hacer clic directo en el mapa para fijar destino
+  mapaCliente.on('click', (e) => {
+    const { lat, lng } = e.latlng;
+    fijarDestinoDesdeMapa(lat, lng);
+  });
+}
+
+function fijarDestinoDesdeMapa(lat, lon) {
+  document.getElementById('cliente-direccion-input').value = `Buscando dirección (${lat.toFixed(4)}, ${lon.toFixed(4)})...`;
+  document.getElementById('btn-clear-search').style.display = 'inline-block';
+
+  // Geocodificación inversa para obtener la dirección del pin
+  fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=16`)
+    .then(res => res.json())
+    .then(datos => {
+      const direccion = datos.display_name || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+      seleccionarDestino(direccion, lat, lon);
+    })
+    .catch(() => {
+      seleccionarDestino(`${lat.toFixed(5)}, ${lon.toFixed(5)}`, lat, lon);
+    });
+}
+
+function extraerCoordenadasDeTexto(texto) {
+  // Detecta links de Google Maps (@lat,lon o q=lat,lon) o coordenadas directas "22.15, -100.98"
+  const regexMaps = /[@q=](-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/;
+  const regexDirecto = /^\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\s*$/;
+  const match = texto.match(regexMaps) || texto.match(regexDirecto);
+  if (match) {
+    const lat = parseFloat(match[1]);
+    const lon = parseFloat(match[2]);
+    if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+      return { lat, lon };
+    }
+  }
+  return null;
+}
+
+function limpiarBusquedaGPS() {
+  document.getElementById('cliente-direccion-input').value = '';
+  document.getElementById('btn-clear-search').style.display = 'none';
+  document.getElementById('sugerencias-gps').style.display = 'none';
+  document.getElementById('cliente-direccion-input').focus();
 }
 
 function buscarDireccionGPS(consulta) {
   clearTimeout(timeoutBusqueda);
   const lista = document.getElementById('sugerencias-gps');
+  const btnClear = document.getElementById('btn-clear-search');
+  btnClear.style.display = consulta.length > 0 ? 'inline-block' : 'none';
 
-  if (!consulta || consulta.length < 3) {
+  if (!consulta || consulta.trim().length < 3) {
     lista.style.display = 'none';
     return;
   }
 
-  timeoutBusqueda = setTimeout(() => {
-    fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=mx&q=${encodeURIComponent(consulta)}&limit=5`)
-      .then(res => res.json())
-      .then(datos => {
-        lista.innerHTML = '';
-        if (datos.length === 0) {
-          lista.style.display = 'none';
-          return;
-        }
+  // 1. Verificar si pegaron coordenadas o enlace de Google Maps
+  const coords = extraerCoordenadasDeTexto(consulta);
+  if (coords) {
+    lista.innerHTML = '';
+    const item = document.createElement('li');
+    item.innerHTML = `
+      <span class="sug-icon">🎯</span>
+      <div class="sug-text">
+        <span class="sug-title">Usar coordenadas detectadas (${coords.lat.toFixed(5)}, ${coords.lon.toFixed(5)})</span>
+        <span class="sug-sub">Clic para fijar este punto exacto en el mapa y calcular ruta</span>
+      </div>
+    `;
+    item.onclick = () => {
+      lista.style.display = 'none';
+      fijarDestinoDesdeMapa(coords.lat, coords.lon);
+    };
+    lista.appendChild(item);
+    lista.style.display = 'block';
+    return;
+  }
 
-        datos.forEach(lugar => {
-          const item = document.createElement('li');
-          item.textContent = lugar.display_name;
-          item.onclick = () => seleccionarDestino(lugar.display_name, lugar.lat, lugar.lon);
-          lista.appendChild(item);
-        });
+  lista.innerHTML = '<li class="sug-loading">Buscando ubicaciones...</li>';
+  lista.style.display = 'block';
 
-        lista.style.display = 'block';
-      })
-      .catch(() => {
-        lista.style.display = 'none';
-      });
-  }, 350);
+  timeoutBusqueda = setTimeout(async () => {
+    try {
+      // Motor principal: Photon (autocompletado rápido estilo Maps/Waze, priorizado cerca de SLP)
+      const resPhoton = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(consulta)}&lat=${ORIGEN_POSCO.lat}&lon=${ORIGEN_POSCO.lon}&limit=6`);
+      const datosPhoton = await resPhoton.json();
+
+      // Filtrar resultados en México si existen, si no mostrar todos
+      let features = (datosPhoton.features || []);
+      const enMexico = features.filter(f => f.properties.countrycode === 'MX' || f.properties.country === 'Mexico' || f.properties.country === 'México');
+      if (enMexico.length > 0) features = enMexico;
+
+      if (features.length > 0) {
+        renderizarSugerenciasPhoton(features, lista);
+        return;
+      }
+
+      // Respaldo: Nominatim (OpenStreetMap)
+      const resNom = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=mx&q=${encodeURIComponent(consulta)}&limit=5`);
+      const datosNom = await resNom.json();
+      renderizarSugerenciasNominatim(datosNom, lista);
+    } catch (err) {
+      lista.style.display = 'none';
+    }
+  }, 300);
+}
+
+function renderizarSugerenciasPhoton(features, lista) {
+  lista.innerHTML = '';
+  features.forEach(f => {
+    const p = f.properties;
+    const [lon, lat] = f.geometry.coordinates;
+
+    const titulo = p.name || p.street || p.city || 'Ubicación';
+    const partesSub = [p.street !== titulo ? p.street : null, p.housenumber, p.district, p.city, p.state, p.postcode].filter(Boolean);
+    const subtitulo = partesSub.join(', ') || p.country || '';
+    const nombreCompleto = subtitulo ? `${titulo}, ${subtitulo}` : titulo;
+
+    const item = document.createElement('li');
+    item.innerHTML = `
+      <span class="sug-icon">📍</span>
+      <div class="sug-text">
+        <span class="sug-title">${titulo}</span>
+        <span class="sug-sub">${subtitulo || 'México'}</span>
+      </div>
+    `;
+    item.onclick = () => seleccionarDestino(nombreCompleto, lat, lon);
+    lista.appendChild(item);
+  });
+  lista.style.display = 'block';
+}
+
+function renderizarSugerenciasNominatim(datos, lista) {
+  lista.innerHTML = '';
+  if (!datos || datos.length === 0) {
+    lista.innerHTML = '<li class="sug-loading">Sin resultados. Prueba haciendo clic directo en el mapa.</li>';
+    return;
+  }
+
+  datos.forEach(lugar => {
+    const partes = lugar.display_name.split(',');
+    const titulo = partes[0].trim();
+    const subtitulo = partes.slice(1).join(',').trim();
+
+    const item = document.createElement('li');
+    item.innerHTML = `
+      <span class="sug-icon">📍</span>
+      <div class="sug-text">
+        <span class="sug-title">${titulo}</span>
+        <span class="sug-sub">${subtitulo}</span>
+      </div>
+    `;
+    item.onclick = () => seleccionarDestino(lugar.display_name, parseFloat(lugar.lat), parseFloat(lugar.lon));
+    lista.appendChild(item);
+  });
+  lista.style.display = 'block';
+}
+
+function actualizarLinksExternos(lat, lon) {
+  const linkGmaps = document.getElementById('link-gmaps');
+  const linkWaze = document.getElementById('link-waze');
+
+  if (lat && lon) {
+    linkGmaps.href = `https://www.google.com/maps/dir/?api=1&origin=${ORIGEN_POSCO.lat},${ORIGEN_POSCO.lon}&destination=${lat},${lon}&travelmode=driving`;
+    linkWaze.href = `https://www.waze.com/ul?ll=${lat},${lon}&navigate=yes`;
+    linkGmaps.classList.remove('disabled');
+    linkWaze.classList.remove('disabled');
+  } else {
+    linkGmaps.href = '#';
+    linkWaze.href = '#';
+    linkGmaps.classList.add('disabled');
+    linkWaze.classList.add('disabled');
+  }
+}
+
+function actualizarPinEnMapa(lat, lon, etiqueta) {
+  inicializarMapaCliente();
+
+  if (marcadorDestino) {
+    marcadorDestino.setLatLng([lat, lon]);
+  } else {
+    marcadorDestino = L.marker([lat, lon], {
+      icon: crearPinIcono('#ef4444'),
+      draggable: true
+    }).addTo(mapaCliente);
+
+    marcadorDestino.on('dragend', (ev) => {
+      const pos = ev.target.getLatLng();
+      fijarDestinoDesdeMapa(pos.lat, pos.lng);
+    });
+  }
+  marcadorDestino.bindPopup(`<b>Destino:</b><br>${etiqueta}`).openPopup();
 }
 
 function seleccionarDestino(nombreCompleto, destLat, destLon) {
+  const lat = parseFloat(destLat);
+  const lon = parseFloat(destLon);
+
   document.getElementById('cliente-direccion-input').value = nombreCompleto;
+  document.getElementById('btn-clear-search').style.display = 'inline-block';
   document.getElementById('sugerencias-gps').style.display = 'none';
+  document.getElementById('cliente-lat').value = lat;
+  document.getElementById('cliente-lon').value = lon;
+
+  actualizarLinksExternos(lat, lon);
+  actualizarPinEnMapa(lat, lon, nombreCompleto);
 
   document.getElementById('cliente-distancia').value = 'Calculando ruta...';
   document.getElementById('cliente-trayecto').value = '';
 
-  const urlRuta = `https://router.project-osrm.org/route/v1/driving/${ORIGEN_POSCO.lon},${ORIGEN_POSCO.lat};${destLon},${destLat}?overview=false`;
+  const urlRuta = `https://router.project-osrm.org/route/v1/driving/${ORIGEN_POSCO.lon},${ORIGEN_POSCO.lat};${lon},${lat}?overview=full&geometries=geojson`;
 
   fetch(urlRuta)
     .then(res => res.json())
     .then(datos => {
       if (datos.routes && datos.routes.length > 0) {
-        const distanciaKm = (datos.routes[0].distance / 1000).toFixed(1);
-        const horasRuta = (datos.routes[0].duration / 3600).toFixed(1);
+        const ruta = datos.routes[0];
+        const distanciaKm = (ruta.distance / 1000).toFixed(1);
+        const horasRuta = (ruta.duration / 3600).toFixed(1);
 
         document.getElementById('cliente-distancia').value = `${distanciaKm} km`;
         document.getElementById('cliente-trayecto').value = horasRuta;
+
+        // Dibujar línea de ruta en el mapa
+        if (capaRuta) mapaCliente.removeLayer(capaRuta);
+        capaRuta = L.geoJSON(ruta.geometry, {
+          style: { color: '#0284c7', weight: 4, opacity: 0.85 }
+        }).addTo(mapaCliente);
+
+        mapaCliente.fitBounds(capaRuta.getBounds(), { padding: [30, 30] });
       } else {
+        document.getElementById('cliente-distancia').value = 'Sin ruta automática';
         alert('No se pudo calcular la ruta automática. Puedes ingresar las horas estimadas manualmente.');
       }
     })
     .catch(() => {
+      document.getElementById('cliente-distancia').value = 'Error de conexión';
       alert('Error de conexión con el calculador de rutas. Ingresa las horas de viaje manualmente.');
     });
 }
+
+// Cerrar sugerencias si el usuario hace clic fuera del buscador
+document.addEventListener('click', (e) => {
+  const container = document.getElementById('search-container-gps');
+  if (container && !container.contains(e.target)) {
+    const lista = document.getElementById('sugerencias-gps');
+    if (lista) lista.style.display = 'none';
+  }
+});
+
+/* ================= LÓGICA DE EMBARQUES Y CLIENTES ================= */
 
 function calcularHoraLimiteSalida(fechaEntrega, horaEntrega, horasTrayecto) {
   const [year, month, day] = fechaEntrega.split('-').map(Number);
@@ -563,26 +860,52 @@ function eliminarEnvio(index) {
   }
 }
 
+function resetearMapaCliente() {
+  document.getElementById('cliente-lat').value = '';
+  document.getElementById('cliente-lon').value = '';
+  document.getElementById('btn-clear-search').style.display = 'none';
+  actualizarLinksExternos(null, null);
+
+  if (mapaCliente) {
+    if (marcadorDestino) {
+      mapaCliente.removeLayer(marcadorDestino);
+      marcadorDestino = null;
+    }
+    if (capaRuta) {
+      mapaCliente.removeLayer(capaRuta);
+      capaRuta = null;
+    }
+    mapaCliente.setView([ORIGEN_POSCO.lat, ORIGEN_POSCO.lon], 7);
+  }
+}
+
 function guardarCliente(e) {
   e.preventDefault();
   const editIndex = parseInt(document.getElementById('cliente-edit-index').value);
   const nombre = document.getElementById('cliente-nombre').value.trim();
   const direccion = document.getElementById('cliente-direccion-input').value.trim();
   const trayecto = parseFloat(document.getElementById('cliente-trayecto').value);
+  const latVal = document.getElementById('cliente-lat').value;
+  const lonVal = document.getElementById('cliente-lon').value;
+  const lat = latVal ? parseFloat(latVal) : null;
+  const lon = lonVal ? parseFloat(lonVal) : null;
 
   if (editIndex === -1) {
-    catalogoClientes.push({ nombre, direccion, trayecto });
+    catalogoClientes.push({ nombre, direccion, trayecto, lat, lon });
     alert('Cliente y destino agregados al catálogo.');
   } else {
     catalogoClientes[editIndex].nombre = nombre;
     catalogoClientes[editIndex].direccion = direccion;
     catalogoClientes[editIndex].trayecto = trayecto;
+    catalogoClientes[editIndex].lat = lat;
+    catalogoClientes[editIndex].lon = lon;
     alert('Cliente actualizado en el catálogo.');
     cancelarEdicionCliente();
   }
 
   document.getElementById('form-cliente').reset();
   document.getElementById('cliente-distancia').value = '';
+  resetearMapaCliente();
   actualizarSelectClientes();
   renderizarTablaClientes();
 }
@@ -592,8 +915,19 @@ function editarCliente(index) {
   document.getElementById('cliente-edit-index').value = index;
   document.getElementById('cliente-nombre').value = c.nombre;
   document.getElementById('cliente-direccion-input').value = c.direccion;
+  document.getElementById('btn-clear-search').style.display = 'inline-block';
   document.getElementById('cliente-trayecto').value = c.trayecto;
   document.getElementById('cliente-distancia').value = 'Ruta guardada previamente';
+
+  if (c.lat && c.lon) {
+    document.getElementById('cliente-lat').value = c.lat;
+    document.getElementById('cliente-lon').value = c.lon;
+    actualizarLinksExternos(c.lat, c.lon);
+    actualizarPinEnMapa(c.lat, c.lon, c.direccion);
+    if (mapaCliente) mapaCliente.setView([c.lat, c.lon], 10);
+  } else {
+    resetearMapaCliente();
+  }
 
   document.getElementById('titulo-form-cliente').textContent = `✏️ Modificar Cliente (${c.nombre})`;
   document.getElementById('btn-submit-cliente').textContent = 'Guardar Cambios del Cliente';
@@ -607,7 +941,8 @@ function cancelarEdicionCliente() {
   document.getElementById('cliente-edit-index').value = '-1';
   document.getElementById('form-cliente').reset();
   document.getElementById('cliente-distancia').value = '';
-  document.getElementById('titulo-form-cliente').textContent = 'Alta de Cliente con Cálculo de Ruta (Maps / GPS)';
+  resetearMapaCliente();
+  document.getElementById('titulo-form-cliente').textContent = 'Alta de Cliente con Cálculo de Ruta (Maps / Waze)';
   document.getElementById('btn-submit-cliente').textContent = 'Guardar Cliente en Catálogo';
   document.getElementById('btn-submit-cliente').style.background = '#0284c7';
   document.getElementById('btn-cancel-cliente').style.display = 'none';
