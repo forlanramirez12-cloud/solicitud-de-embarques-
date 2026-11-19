@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Control de Embarques - POSCO MPPC SLP</title>
 
-<!-- Leaflet CSS para mapa interactivo tipo Maps/Waze -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
 <style>
@@ -22,7 +21,9 @@ h2 { color: #1e3a8a; margin-top: 5px; }
 
 /* Estilos de la App */
 #app-content { display: none; }
-.user-bar { background: #1e293b; color: white; padding: 10px 15px; border-radius: 6px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+.user-bar { background: #1e293b; color: white; padding: 10px 15px; border-radius: 6px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 14px; }
+.user-bar-left { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sync-badge { font-size: 12px; padding: 3px 9px; border-radius: 12px; background: rgba(255,255,255,0.12); font-weight: 600; }
 .btn-logout { background: #ef4444; color: white; padding: 6px 12px; border: 0; font-weight: bold; border-radius: 4px; cursor: pointer; }
 
 .origin-badge { background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 4px; font-size: 13px; font-weight: 600; display: inline-block; margin-bottom: 15px; }
@@ -50,14 +51,22 @@ button { border: none; padding: 11px; cursor: pointer; font-weight: bold; border
 .filter-bar label { font-size: 13px; font-weight: bold; }
 .filter-bar input[type="date"] { padding: 6px 10px; font-size: 13px; width: auto; }
 
-/* Buscador GPS estilo Google Maps / Waze */
+/* Buscador GPS estilo Waze */
 .search-container { position: relative; width: 100%; }
-.search-input-wrap { position: relative; display: flex; align-items: center; }
-.search-input-wrap .search-icon { position: absolute; left: 12px; font-size: 16px; pointer-events: none; }
-.search-input-wrap input { padding-left: 36px; padding-right: 36px; border-radius: 8px; border: 1.5px solid #cbd5e1; transition: border-color 0.2s, box-shadow 0.2s; }
+.search-row { display: flex; gap: 8px; align-items: stretch; }
+.search-input-wrap { position: relative; display: flex; align-items: center; flex: 1; }
+.search-input-wrap .search-icon { position: absolute; left: 12px; font-size: 15px; pointer-events: none; }
+.search-input-wrap input { padding-left: 36px; padding-right: 34px; border-radius: 8px; border: 1.5px solid #cbd5e1; }
 .search-input-wrap input:focus { outline: none; border-color: #0284c7; box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15); }
-.btn-clear-search { position: absolute; right: 8px; background: transparent; color: #64748b; padding: 4px 8px; font-size: 14px; display: none; }
+.btn-clear-search { position: absolute; right: 6px; background: transparent; color: #64748b; padding: 4px 8px; font-size: 14px; display: none; }
 .btn-clear-search:hover { color: #0f172a; }
+.btn-calc-ruta { background: #0284c7; color: white; padding: 0 14px; border-radius: 8px; font-size: 13px; white-space: nowrap; }
+.btn-calc-ruta:hover { background: #0369a1; }
+
+.ruta-status { font-size: 12px; margin-top: 6px; color: #475569; min-height: 16px; }
+.ruta-status.ok { color: #059669; font-weight: 600; }
+.ruta-status.warn { color: #b45309; font-weight: 600; }
+.ruta-status.err { color: #dc2626; font-weight: 600; }
 
 .suggestions-list {
   position: absolute; top: calc(100% + 4px); left: 0; right: 0;
@@ -66,21 +75,21 @@ button { border: none; padding: 11px; cursor: pointer; font-weight: bold; border
   box-shadow: 0 10px 25px rgba(0,0,0,0.12); list-style: none; padding: 4px 0; margin: 0; display: none;
 }
 .suggestions-list li {
-  padding: 10px 14px; cursor: pointer; display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 10px;
   border-bottom: 1px solid #f1f5f9; transition: background 0.15s;
 }
 .suggestions-list li:last-child { border-bottom: none; }
 .suggestions-list li:hover { background-color: #f0f9ff; }
+.sug-left { display: flex; align-items: flex-start; gap: 10px; min-width: 0; flex: 1; }
 .sug-icon { font-size: 16px; margin-top: 2px; flex-shrink: 0; }
 .sug-text { display: flex; flex-direction: column; min-width: 0; }
 .sug-title { font-size: 13.5px; font-weight: 600; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sug-sub { font-size: 12px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.sug-loading { padding: 12px; text-align: center; font-size: 13px; color: #64748b; cursor: default !important; }
+.sug-dist { font-size: 12px; font-weight: 600; color: #64748b; white-space: nowrap; }
+.sug-loading { padding: 12px; text-align: center; font-size: 13px; color: #64748b; cursor: default !important; justify-content: center !important; }
 
-/* Mapa Interactivo y Botones Externos */
-.map-wrapper {
-  border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #e2e8f0;
-}
+/* Mapa Interactivo */
+.map-wrapper { border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden; background: #e2e8f0; }
 .map-toolbar {
   display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px;
   background: #f8fafc; padding: 8px 12px; border-bottom: 1px solid #e2e8f0; font-size: 12px; color: #475569;
@@ -89,13 +98,11 @@ button { border: none; padding: 11px; cursor: pointer; font-weight: bold; border
 .btn-ext-map {
   display: inline-flex; align-items: center; gap: 5px; text-decoration: none;
   padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: 600; color: white;
-  transition: opacity 0.15s;
 }
-.btn-ext-map:hover { opacity: 0.9; }
 .btn-gmaps { background: #1a73e8; }
 .btn-waze { background: #00b0ff; }
 .btn-ext-map.disabled { opacity: 0.45; pointer-events: none; }
-#mapa-cliente { width: 100%; height: 290px; z-index: 1; }
+#mapa-cliente { width: 100%; height: 280px; z-index: 1; }
 
 .table-responsive { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; min-width: 820px; }
@@ -103,22 +110,17 @@ th, td { border: 1px solid #e2e8f0; padding: 9px; text-align: left; vertical-ali
 th { background-color: #0284c7; color: white; }
 .th-salidas { background-color: #059669; }
 
-/* Semáforos limpios */
+/* Semáforos */
 .semaforo-dot { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
 .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-
 .sem-azul { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
 .sem-azul .dot { background: #2563eb; }
-
 .sem-verde-azul { background: #f0fdfa; color: #0f766e; border: 1px solid #99f6e4; }
 .sem-verde-azul .dot { background: #14b8a6; }
-
 .sem-amarillo { background: #fefce8; color: #854d0e; border: 1px solid #fef08a; }
 .sem-amarillo .dot { background: #eab308; }
-
 .sem-rojo { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 .sem-rojo .dot { background: #ef4444; }
-
 .sem-gris { background: #f8fafc; color: #475569; border: 1px solid #cbd5e1; }
 .sem-gris .dot { background: #94a3b8; }
 </style>
@@ -135,7 +137,7 @@ th { background-color: #0284c7; color: white; }
   </select>
 
   <div class="password-group">
-    <input type="password" id="login-password" class="login-field" placeholder="Contraseña">
+    <input type="password" id="login-password" class="login-field" placeholder="Contraseña" onkeydown="if(event.key==='Enter') ejecutarLogin()">
     <button type="button" id="btn-ojo" class="btn-toggle-eye" onclick="alternarPassword()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></button>
   </div>
 
@@ -145,7 +147,10 @@ th { background-color: #0284c7; color: white; }
 <!-- APP -->
 <div id="app-content">
   <div class="user-bar">
-    <span>Sesión: <b id="user-display"></b></span>
+    <div class="user-bar-left">
+      <span>Sesión: <b id="user-display"></b></span>
+      <span id="sync-status" class="sync-badge">🟡 Conectando...</span>
+    </div>
     <button class="btn-logout" onclick="logout()">Salir</button>
   </div>
 
@@ -166,7 +171,7 @@ th { background-color: #0284c7; color: white; }
   <div id="panel-envios" class="panel">
     <h3 id="titulo-form-envio">Nueva Solicitud de Embarque</h3>
     <form id="form-envio" class="app-form" onsubmit="guardarEnvio(event)">
-      <input type="hidden" id="envio-edit-index" value="-1">
+      <input type="hidden" id="envio-edit-id" value="">
 
       <label for="envio-delivery"><b>Folio Delivery:</b></label>
       <input type="text" id="envio-delivery" placeholder="Ej: DEL-5001" required>
@@ -220,31 +225,35 @@ th { background-color: #0284c7; color: white; }
   <div id="panel-clientes" class="panel">
     <h3 id="titulo-form-cliente">Alta de Cliente con Cálculo de Ruta (Maps / Waze)</h3>
     <p style="font-size: 13px; color: #555; margin-top: 0;">
-      Busca por nombre, parque industrial, dirección o pega coordenadas / link de Google Maps. También puedes <b>hacer clic o arrastrar el pin en el mapa</b> para ajustar el destino exacto.
+      Escribe el nombre de la planta, dirección exacta, coordenadas o pega un enlace de Google Maps y elige una opción o presiona <b>Calcular Ruta</b>. También puedes hacer clic directo en el mapa.
     </p>
     
     <form id="form-cliente" class="app-form app-form-wide" onsubmit="guardarCliente(event)">
-      <input type="hidden" id="cliente-edit-index" value="-1">
+      <input type="hidden" id="cliente-edit-id" value="">
       <input type="hidden" id="cliente-lat" value="">
       <input type="hidden" id="cliente-lon" value="">
 
       <label for="cliente-nombre"><b>Nombre del Cliente / Empresa:</b></label>
-      <input type="text" id="cliente-nombre" placeholder="Ej: Mabe Saltillo" required>
+      <input type="text" id="cliente-nombre" placeholder="Ej: Mabe Leiser SLP" required>
 
-      <label for="cliente-direccion-input"><b>Buscar Destino (Estilo Google Maps / Waze):</b></label>
+      <label for="cliente-direccion-input"><b>Destino (Dirección exacta, planta o coordenadas):</b></label>
       <div class="search-container" id="search-container-gps">
-        <div class="search-input-wrap">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="cliente-direccion-input" placeholder="Busca planta, parque industrial, dirección o pega link/coordenadas..." autocomplete="off" oninput="buscarDireccionGPS(this.value)" required>
-          <button type="button" id="btn-clear-search" class="btn-clear-search" onclick="limpiarBusquedaGPS()" title="Limpiar búsqueda">✕</button>
+        <div class="search-row">
+          <div class="search-input-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="cliente-direccion-input" placeholder="Ej: Eje 128, Zona Industrial, SLP o pega coordenadas..." autocomplete="off" oninput="buscarDireccionGPS(this.value)" onkeydown="manejarEnterDireccion(event)" required>
+            <button type="button" id="btn-clear-search" class="btn-clear-search" onclick="limpiarBusquedaGPS()" title="Limpiar">✕</button>
+          </div>
+          <button type="button" class="btn-calc-ruta" onclick="buscarYCalcularDirecto()">Calcular Ruta</button>
         </div>
         <ul id="sugerencias-gps" class="suggestions-list"></ul>
+        <div id="ruta-status" class="ruta-status"></div>
       </div>
 
       <!-- Mapa Interactivo -->
       <div class="map-wrapper">
         <div class="map-toolbar">
-          <span>📍 Haz clic en el mapa o arrastra el pin rojo para fijar el destino</span>
+          <span>📍 Haz clic en el mapa o arrastra el pin rojo para ajustar el destino</span>
           <div class="map-ext-links">
             <a id="link-gmaps" href="#" target="_blank" rel="noopener" class="btn-ext-map btn-gmaps disabled">🗺️ Google Maps</a>
             <a id="link-waze" href="#" target="_blank" rel="noopener" class="btn-ext-map btn-waze disabled">🚗 Waze</a>
@@ -338,22 +347,43 @@ th { background-color: #0284c7; color: white; }
 
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Firebase Realtime Database SDK (Compat para uso directo en HTML) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
 <script>
+/* ================= CONFIGURACIÓN DE FIREBASE ================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyDonYYvfjGabzM6Cw_vRBI_ALQ_AoYGYW0",
+  authDomain: "embarques-posco.firebaseapp.com",
+  databaseURL: "https://embarques-posco-default-rtdb.firebaseio.com",
+  projectId: "embarques-posco",
+  storageBucket: "embarques-posco.firebasestorage.app",
+  messagingSenderId: "965869957869",
+  appId: "1:965869957869:web:65c3926a087caa9b5892e4",
+  measurementId: "G-74LFX25H03"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const refClientes = db.ref('clientes');
+const refEmbarques = db.ref('embarques');
+
 const ORIGEN_POSCO = { lat: 22.0833, lon: -100.8667 };
 
-let catalogoClientes = [
+const CLIENTES_INICIALES = [
   { nombre: "Mabe Saltillo", direccion: "Blvd. Isidro López Zertuche, Saltillo, Coahuila", trayecto: 4.0, lat: 25.4519, lon: -100.9927 },
   { nombre: "Stellantis Toluca", direccion: "Av. Industria Automotriz, Toluca, Edo. Méx.", trayecto: 4.5, lat: 19.3025, lon: -99.6094 },
   { nombre: "DN Automotive SLP", direccion: "Parque Industrial Logistik, Villa de Reyes, SLP", trayecto: 0.7, lat: 21.8692, lon: -100.8965 }
 ];
 
+let catalogoClientes = [];
 let embarques = [];
 let usuarioActual = '';
 let fechaFiltroSeleccionada = '';
 let timeoutBusqueda = null;
+let listenersIniciados = false;
 
-// Variables del mapa interactivo
 let mapaCliente = null;
 let marcadorOrigen = null;
 let marcadorDestino = null;
@@ -361,6 +391,51 @@ let capaRuta = null;
 
 const iconoOjoAbierto = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
 const iconoOjoCerrado = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
+
+function iniciarSincronizacionFirebase() {
+  if (listenersIniciados) return;
+  listenersIniciados = true;
+
+  // Monitorear estado de conexión
+  db.ref('.info/connected').on('value', (snap) => {
+    const badge = document.getElementById('sync-status');
+    if (!badge) return;
+    if (snap.val() === true) {
+      badge.textContent = '🟢 En línea (Sincronizado)';
+    } else {
+      badge.textContent = '🔴 Sin conexión';
+    }
+  });
+
+  // Escuchar cambios en Clientes en tiempo real
+  refClientes.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      // Sembrar clientes iniciales solo si la base está vacía
+      CLIENTES_INICIALES.forEach(c => refClientes.push(c));
+      return;
+    }
+    catalogoClientes = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+    actualizarSelectClientes();
+    renderizarTablaClientes();
+  }, (err) => {
+    console.error('Error leyendo clientes:', err);
+    alert('Error de permisos en Firebase al leer clientes. Revisa las Reglas de tu Realtime Database.');
+  });
+
+  // Escuchar cambios en Embarques en tiempo real
+  refEmbarques.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (!data) {
+      embarques = [];
+    } else {
+      embarques = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+    }
+    renderizarTablas();
+  }, (err) => {
+    console.error('Error leyendo embarques:', err);
+  });
+}
 
 function alternarPassword() {
   const passInput = document.getElementById('login-password');
@@ -397,6 +472,7 @@ function ejecutarLogin() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-content').style.display = 'block';
   document.getElementById('user-display').textContent = usuarioActual;
+  iniciarSincronizacionFirebase();
   actualizarSelectClientes();
   renderizarTablas();
 }
@@ -442,7 +518,25 @@ function switchTab(tabId) {
   }
 }
 
-/* ================= MAPA Y BUSCADOR ESTILO GOOGLE MAPS / WAZE ================= */
+/* ================= BUSCADOR ESTILO WAZE + RUTA CON TRIPLE RESPALDO ================= */
+
+function setRutaStatus(mensaje, tipo = '') {
+  const el = document.getElementById('ruta-status');
+  if (!el) return;
+  el.textContent = mensaje;
+  el.className = 'ruta-status' + (tipo ? ' ' + tipo : '');
+}
+
+function calcularDistanciaLinealKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 function crearPinIcono(colorHex) {
   return L.divIcon({
@@ -457,7 +551,6 @@ function inicializarMapaCliente() {
   if (mapaCliente) return;
 
   mapaCliente = L.map('mapa-cliente').setView([ORIGEN_POSCO.lat, ORIGEN_POSCO.lon], 7);
-
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; OpenStreetMap'
@@ -467,34 +560,32 @@ function inicializarMapaCliente() {
     .addTo(mapaCliente)
     .bindPopup('<b>Origen:</b> POSCO MPPC SLP');
 
-  // Permitir hacer clic directo en el mapa para fijar destino
   mapaCliente.on('click', (e) => {
-    const { lat, lng } = e.latlng;
-    fijarDestinoDesdeMapa(lat, lng);
+    fijarDestinoDesdeMapa(e.latlng.lat, e.latlng.lng);
   });
 }
 
-function fijarDestinoDesdeMapa(lat, lon) {
-  document.getElementById('cliente-direccion-input').value = `Buscando dirección (${lat.toFixed(4)}, ${lon.toFixed(4)})...`;
+async function fijarDestinoDesdeMapa(lat, lon) {
+  document.getElementById('cliente-direccion-input').value = `Obteniendo dirección (${lat.toFixed(4)}, ${lon.toFixed(4)})...`;
   document.getElementById('btn-clear-search').style.display = 'inline-block';
+  setRutaStatus('Ubicando dirección del punto seleccionado...');
 
-  // Geocodificación inversa para obtener la dirección del pin
-  fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=16`)
-    .then(res => res.json())
-    .then(datos => {
-      const direccion = datos.display_name || `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
-      seleccionarDestino(direccion, lat, lon);
-    })
-    .catch(() => {
-      seleccionarDestino(`${lat.toFixed(5)}, ${lon.toFixed(5)}`, lat, lon);
-    });
+  try {
+    const res = await fetch(`https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode?f=json&location=${lon},${lat}`);
+    const data = await res.json();
+    const direccion = (data.address && data.address.LongLabel) ? data.address.LongLabel : `${lat.toFixed(5)}, ${lon.toFixed(5)}`;
+    seleccionarDestino(direccion, lat, lon);
+  } catch {
+    seleccionarDestino(`${lat.toFixed(5)}, ${lon.toFixed(5)}`, lat, lon);
+  }
 }
 
 function extraerCoordenadasDeTexto(texto) {
-  // Detecta links de Google Maps (@lat,lon o q=lat,lon) o coordenadas directas "22.15, -100.98"
+  const regexPinExacto = /!3d(-?\d{1,2}\.\d+)!4d(-?\d{1,3}\.\d+)/;
   const regexMaps = /[@q=](-?\d{1,2}\.\d+),\s*(-?\d{1,3}\.\d+)/;
-  const regexDirecto = /^\s*(-?\d{1,2}\.\d+)\s*,\s*(-?\d{1,3}\.\d+)\s*$/;
-  const match = texto.match(regexMaps) || texto.match(regexDirecto);
+  const regexDirecto = /(-?\d{1,2}\.\d{3,})\s*,\s*(-?\d{1,3}\.\d{3,})/;
+
+  const match = texto.match(regexPinExacto) || texto.match(regexMaps) || texto.match(regexDirecto);
   if (match) {
     const lat = parseFloat(match[1]);
     const lon = parseFloat(match[2]);
@@ -505,10 +596,88 @@ function extraerCoordenadasDeTexto(texto) {
   return null;
 }
 
+function manejarEnterDireccion(e) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    buscarYCalcularDirecto();
+  }
+}
+
+async function consultarGeocodificadores(texto) {
+  const resultados = [];
+
+  try {
+    const urlArc = `https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates?f=json&SingleLine=${encodeURIComponent(texto)}&location=${ORIGEN_POSCO.lon},${ORIGEN_POSCO.lat}&sourceCountry=MEX&maxLocations=6&outFields=PlaceName,Place_addr`;
+    const res = await fetch(urlArc);
+    const data = await res.json();
+    if (data.candidates && data.candidates.length > 0) {
+      data.candidates.forEach(c => {
+        const lat = c.location.y;
+        const lon = c.location.x;
+        const titulo = (c.attributes && c.attributes.PlaceName) ? c.attributes.PlaceName : c.address.split(',')[0];
+        const sub = (c.attributes && c.attributes.Place_addr) ? c.attributes.Place_addr : c.address;
+        const nombreCompleto = sub && sub !== titulo ? `${titulo}, ${sub}` : titulo;
+        resultados.push({ titulo, subtitulo: sub, nombreCompleto, lat, lon });
+      });
+    }
+  } catch (e) {}
+
+  if (resultados.length === 0) {
+    try {
+      const resNom = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=mx&q=${encodeURIComponent(texto)}&limit=5`);
+      const datosNom = await resNom.json();
+      if (Array.isArray(datosNom)) {
+        datosNom.forEach(lugar => {
+          const partes = lugar.display_name.split(',');
+          resultados.push({
+            titulo: partes[0].trim(),
+            subtitulo: partes.slice(1).join(',').trim(),
+            nombreCompleto: lugar.display_name,
+            lat: parseFloat(lugar.lat),
+            lon: parseFloat(lugar.lon)
+          });
+        });
+      }
+    } catch (e) {}
+  }
+
+  return resultados;
+}
+
+async function buscarYCalcularDirecto() {
+  const input = document.getElementById('cliente-direccion-input');
+  const lista = document.getElementById('sugerencias-gps');
+  const texto = input.value.trim();
+
+  if (!texto || texto.length < 3) {
+    setRutaStatus('Escribe una dirección o pega coordenadas primero.', 'warn');
+    return;
+  }
+
+  lista.style.display = 'none';
+
+  const coords = extraerCoordenadasDeTexto(texto);
+  if (coords) {
+    fijarDestinoDesdeMapa(coords.lat, coords.lon);
+    return;
+  }
+
+  setRutaStatus('Buscando dirección exacta y calculando ruta...');
+  const resultados = await consultarGeocodificadores(texto);
+
+  if (resultados.length > 0) {
+    const mejor = resultados[0];
+    seleccionarDestino(mejor.nombreCompleto, mejor.lat, mejor.lon);
+  } else {
+    setRutaStatus('No se encontró esa dirección. Prueba acortarla o haz clic directo en el mapa.', 'err');
+  }
+}
+
 function limpiarBusquedaGPS() {
   document.getElementById('cliente-direccion-input').value = '';
   document.getElementById('btn-clear-search').style.display = 'none';
   document.getElementById('sugerencias-gps').style.display = 'none';
+  setRutaStatus('');
   document.getElementById('cliente-direccion-input').focus();
 }
 
@@ -516,23 +685,35 @@ function buscarDireccionGPS(consulta) {
   clearTimeout(timeoutBusqueda);
   const lista = document.getElementById('sugerencias-gps');
   const btnClear = document.getElementById('btn-clear-search');
-  btnClear.style.display = consulta.length > 0 ? 'inline-block' : 'none';
+  const texto = consulta.trim();
+  btnClear.style.display = texto.length > 0 ? 'inline-block' : 'none';
 
-  if (!consulta || consulta.trim().length < 3) {
+  if (!texto || texto.length < 3) {
     lista.style.display = 'none';
     return;
   }
 
-  // 1. Verificar si pegaron coordenadas o enlace de Google Maps
-  const coords = extraerCoordenadasDeTexto(consulta);
+  if (/maps\.app\.goo\.gl|goo\.gl\/maps/i.test(texto)) {
+    lista.innerHTML = `
+      <li class="sug-loading" style="text-align:left; color:#92400e; background:#fefce8;">
+        ⚠️ Los enlaces cortos (goo.gl) ocultan las coordenadas. Abre ese enlace y copia la <b>URL larga</b> de la barra o haz clic derecho en el pin para copiar las coordenadas.
+      </li>
+    `;
+    lista.style.display = 'block';
+    return;
+  }
+
+  const coords = extraerCoordenadasDeTexto(texto);
   if (coords) {
     lista.innerHTML = '';
     const item = document.createElement('li');
     item.innerHTML = `
-      <span class="sug-icon">🎯</span>
-      <div class="sug-text">
-        <span class="sug-title">Usar coordenadas detectadas (${coords.lat.toFixed(5)}, ${coords.lon.toFixed(5)})</span>
-        <span class="sug-sub">Clic para fijar este punto exacto en el mapa y calcular ruta</span>
+      <div class="sug-left">
+        <span class="sug-icon">🎯</span>
+        <div class="sug-text">
+          <span class="sug-title">Usar coordenadas detectadas (${coords.lat.toFixed(5)}, ${coords.lon.toFixed(5)})</span>
+          <span class="sug-sub">Clic para fijar el pin y calcular ruta</span>
+        </div>
       </div>
     `;
     item.onclick = () => {
@@ -544,84 +725,49 @@ function buscarDireccionGPS(consulta) {
     return;
   }
 
-  lista.innerHTML = '<li class="sug-loading">Buscando ubicaciones...</li>';
+  lista.innerHTML = '<li class="sug-loading">Buscando lugares...</li>';
   lista.style.display = 'block';
 
   timeoutBusqueda = setTimeout(async () => {
-    try {
-      // Motor principal: Photon (autocompletado rápido estilo Maps/Waze, priorizado cerca de SLP)
-      const resPhoton = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(consulta)}&lat=${ORIGEN_POSCO.lat}&lon=${ORIGEN_POSCO.lon}&limit=6`);
-      const datosPhoton = await resPhoton.json();
+    const resultados = await consultarGeocodificadores(texto);
+    lista.innerHTML = '';
 
-      // Filtrar resultados en México si existen, si no mostrar todos
-      let features = (datosPhoton.features || []);
-      const enMexico = features.filter(f => f.properties.countrycode === 'MX' || f.properties.country === 'Mexico' || f.properties.country === 'México');
-      if (enMexico.length > 0) features = enMexico;
-
-      if (features.length > 0) {
-        renderizarSugerenciasPhoton(features, lista);
-        return;
-      }
-
-      // Respaldo: Nominatim (OpenStreetMap)
-      const resNom = await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=mx&q=${encodeURIComponent(consulta)}&limit=5`);
-      const datosNom = await resNom.json();
-      renderizarSugerenciasNominatim(datosNom, lista);
-    } catch (err) {
-      lista.style.display = 'none';
+    if (resultados.length === 0) {
+      lista.innerHTML = `<li class="sug-loading">Sin resultados para "${texto}".</li>`;
+    } else {
+      resultados.forEach(r => {
+        const distKm = Math.round(calcularDistanciaLinealKm(ORIGEN_POSCO.lat, ORIGEN_POSCO.lon, r.lat, r.lon));
+        const item = document.createElement('li');
+        item.innerHTML = `
+          <div class="sug-left">
+            <span class="sug-icon">📍</span>
+            <div class="sug-text">
+              <span class="sug-title">${r.titulo}</span>
+              <span class="sug-sub">${r.subtitulo}</span>
+            </div>
+          </div>
+          <span class="sug-dist">${distKm} km</span>
+        `;
+        item.onclick = () => seleccionarDestino(r.nombreCompleto, r.lat, r.lon);
+        lista.appendChild(item);
+      });
     }
+
+    const liGmaps = document.createElement('li');
+    liGmaps.style.background = '#f0f9ff';
+    liGmaps.innerHTML = `
+      <div class="sug-left">
+        <span class="sug-icon">🔍</span>
+        <div class="sug-text">
+          <span class="sug-title" style="color:#0369a1;">Buscar "${texto}" en Google Maps</span>
+          <span class="sug-sub">Copia las coordenadas o el enlace largo y pégalo aquí</span>
+        </div>
+      </div>
+    `;
+    liGmaps.onclick = () => window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(texto + ', México')}`, '_blank', 'noopener');
+    lista.appendChild(liGmaps);
+    lista.style.display = 'block';
   }, 300);
-}
-
-function renderizarSugerenciasPhoton(features, lista) {
-  lista.innerHTML = '';
-  features.forEach(f => {
-    const p = f.properties;
-    const [lon, lat] = f.geometry.coordinates;
-
-    const titulo = p.name || p.street || p.city || 'Ubicación';
-    const partesSub = [p.street !== titulo ? p.street : null, p.housenumber, p.district, p.city, p.state, p.postcode].filter(Boolean);
-    const subtitulo = partesSub.join(', ') || p.country || '';
-    const nombreCompleto = subtitulo ? `${titulo}, ${subtitulo}` : titulo;
-
-    const item = document.createElement('li');
-    item.innerHTML = `
-      <span class="sug-icon">📍</span>
-      <div class="sug-text">
-        <span class="sug-title">${titulo}</span>
-        <span class="sug-sub">${subtitulo || 'México'}</span>
-      </div>
-    `;
-    item.onclick = () => seleccionarDestino(nombreCompleto, lat, lon);
-    lista.appendChild(item);
-  });
-  lista.style.display = 'block';
-}
-
-function renderizarSugerenciasNominatim(datos, lista) {
-  lista.innerHTML = '';
-  if (!datos || datos.length === 0) {
-    lista.innerHTML = '<li class="sug-loading">Sin resultados. Prueba haciendo clic directo en el mapa.</li>';
-    return;
-  }
-
-  datos.forEach(lugar => {
-    const partes = lugar.display_name.split(',');
-    const titulo = partes[0].trim();
-    const subtitulo = partes.slice(1).join(',').trim();
-
-    const item = document.createElement('li');
-    item.innerHTML = `
-      <span class="sug-icon">📍</span>
-      <div class="sug-text">
-        <span class="sug-title">${titulo}</span>
-        <span class="sug-sub">${subtitulo}</span>
-      </div>
-    `;
-    item.onclick = () => seleccionarDestino(lugar.display_name, parseFloat(lugar.lat), parseFloat(lugar.lon));
-    lista.appendChild(item);
-  });
-  lista.style.display = 'block';
 }
 
 function actualizarLinksExternos(lat, lon) {
@@ -660,7 +806,20 @@ function actualizarPinEnMapa(lat, lon, etiqueta) {
   marcadorDestino.bindPopup(`<b>Destino:</b><br>${etiqueta}`).openPopup();
 }
 
-function seleccionarDestino(nombreCompleto, destLat, destLon) {
+async function fetchConTimeout(url, ms = 6000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), ms);
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(id);
+    return res;
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}
+
+async function seleccionarDestino(nombreCompleto, destLat, destLon) {
   const lat = parseFloat(destLat);
   const lon = parseFloat(destLon);
 
@@ -675,39 +834,61 @@ function seleccionarDestino(nombreCompleto, destLat, destLon) {
 
   document.getElementById('cliente-distancia').value = 'Calculando ruta...';
   document.getElementById('cliente-trayecto').value = '';
+  setRutaStatus('Calculando distancia y tiempo de traslado por carretera...');
 
-  const urlRuta = `https://router.project-osrm.org/route/v1/driving/${ORIGEN_POSCO.lon},${ORIGEN_POSCO.lat};${lon},${lat}?overview=full&geometries=geojson`;
+  const servidoresRuta = [
+    `https://router.project-osrm.org/route/v1/driving/${ORIGEN_POSCO.lon},${ORIGEN_POSCO.lat};${lon},${lat}?overview=full&geometries=geojson`,
+    `https://routing.openstreetmap.de/routed-car/route/v1/driving/${ORIGEN_POSCO.lon},${ORIGEN_POSCO.lat};${lon},${lat}?overview=full&geometries=geojson`
+  ];
 
-  fetch(urlRuta)
-    .then(res => res.json())
-    .then(datos => {
+  let rutaEncontrada = null;
+
+  for (const url of servidoresRuta) {
+    try {
+      const res = await fetchConTimeout(url, 6000);
+      const datos = await res.json();
       if (datos.routes && datos.routes.length > 0) {
-        const ruta = datos.routes[0];
-        const distanciaKm = (ruta.distance / 1000).toFixed(1);
-        const horasRuta = (ruta.duration / 3600).toFixed(1);
-
-        document.getElementById('cliente-distancia').value = `${distanciaKm} km`;
-        document.getElementById('cliente-trayecto').value = horasRuta;
-
-        // Dibujar línea de ruta en el mapa
-        if (capaRuta) mapaCliente.removeLayer(capaRuta);
-        capaRuta = L.geoJSON(ruta.geometry, {
-          style: { color: '#0284c7', weight: 4, opacity: 0.85 }
-        }).addTo(mapaCliente);
-
-        mapaCliente.fitBounds(capaRuta.getBounds(), { padding: [30, 30] });
-      } else {
-        document.getElementById('cliente-distancia').value = 'Sin ruta automática';
-        alert('No se pudo calcular la ruta automática. Puedes ingresar las horas estimadas manualmente.');
+        rutaEncontrada = datos.routes[0];
+        break;
       }
-    })
-    .catch(() => {
-      document.getElementById('cliente-distancia').value = 'Error de conexión';
-      alert('Error de conexión con el calculador de rutas. Ingresa las horas de viaje manualmente.');
-    });
+    } catch (e) {}
+  }
+
+  if (capaRuta) {
+    mapaCliente.removeLayer(capaRuta);
+    capaRuta = null;
+  }
+
+  if (rutaEncontrada) {
+    const distanciaKm = (rutaEncontrada.distance / 1000).toFixed(1);
+    const horasRuta = Math.max(0.1, (rutaEncontrada.duration / 3600)).toFixed(1);
+
+    document.getElementById('cliente-distancia').value = `${distanciaKm} km`;
+    document.getElementById('cliente-trayecto').value = horasRuta;
+
+    capaRuta = L.geoJSON(rutaEncontrada.geometry, {
+      style: { color: '#0284c7', weight: 4, opacity: 0.85 }
+    }).addTo(mapaCliente);
+    mapaCliente.fitBounds(capaRuta.getBounds(), { padding: [30, 30] });
+
+    setRutaStatus(`✓ Ruta por carretera calculada (${distanciaKm} km · ${horasRuta} hrs).`, 'ok');
+  } else {
+    const linealKm = calcularDistanciaLinealKm(ORIGEN_POSCO.lat, ORIGEN_POSCO.lon, lat, lon);
+    const estimadoKm = (linealKm * 1.28).toFixed(1);
+    const estimadoHrs = Math.max(0.2, (linealKm * 1.28) / 65).toFixed(1);
+
+    document.getElementById('cliente-distancia').value = `~${estimadoKm} km (Estimado)`;
+    document.getElementById('cliente-trayecto').value = estimadoHrs;
+
+    capaRuta = L.polyline([[ORIGEN_POSCO.lat, ORIGEN_POSCO.lon], [lat, lon]], {
+      color: '#f59e0b', weight: 3, dashArray: '6, 8'
+    }).addTo(mapaCliente);
+    mapaCliente.fitBounds(capaRuta.getBounds(), { padding: [30, 30] });
+
+    setRutaStatus('⚠ Servidor de rutas no disponible. Se calculó un tiempo estimado (puedes ajustarlo manualmente o verificar en Google Maps).', 'warn');
+  }
 }
 
-// Cerrar sugerencias si el usuario hace clic fuera del buscador
 document.addEventListener('click', (e) => {
   const container = document.getElementById('search-container-gps');
   if (container && !container.contains(e.target)) {
@@ -716,7 +897,7 @@ document.addEventListener('click', (e) => {
   }
 });
 
-/* ================= LÓGICA DE EMBARQUES Y CLIENTES ================= */
+/* ================= LÓGICA DE EMBARQUES Y CLIENTES (FIREBASE) ================= */
 
 function calcularHoraLimiteSalida(fechaEntrega, horaEntrega, horasTrayecto) {
   const [year, month, day] = fechaEntrega.split('-').map(Number);
@@ -732,28 +913,21 @@ function calcularHoraLimiteSalida(fechaEntrega, horaEntrega, horasTrayecto) {
 }
 
 function evaluarSemaforo(item) {
-  if (item.salidaReal) {
-    return { clase: 'sem-gris', texto: 'Salida confirmada' };
-  }
-
-  if (item.estado === 'En Andén') {
-    return { clase: 'sem-azul', texto: 'En andén (Cargando)' };
-  }
+  if (item.salidaReal) return { clase: 'sem-gris', texto: 'Salida confirmada' };
+  if (item.estado === 'En Andén') return { clase: 'sem-azul', texto: 'En andén (Cargando)' };
 
   const ahora = new Date().getTime();
   const diffMinutos = Math.round((item.limiteTimestamp - ahora) / (1000 * 60));
 
-  if (diffMinutos <= 60) {
-    return { clase: 'sem-rojo', texto: 'Crítico / Retraso' };
-  } else if (diffMinutos <= 120) {
-    return { clase: 'sem-amarillo', texto: 'Alerta preventiva' };
-  } else {
-    return { clase: 'sem-verde-azul', texto: 'En tiempo' };
-  }
+  if (diffMinutos <= 60) return { clase: 'sem-rojo', texto: 'Crítico / Retraso' };
+  if (diffMinutos <= 120) return { clase: 'sem-amarillo', texto: 'Alerta preventiva' };
+  return { clase: 'sem-verde-azul', texto: 'En tiempo' };
 }
 
 function actualizarSelectClientes() {
   const select = document.getElementById('envio-cliente');
+  if (!select) return;
+  const valorPrevio = select.value;
   select.innerHTML = '<option value="">-- Selecciona un Cliente del Catálogo --</option>';
   catalogoClientes.forEach(c => {
     const option = document.createElement('option');
@@ -761,11 +935,12 @@ function actualizarSelectClientes() {
     option.textContent = `${c.nombre} (Destino: ${c.direccion.slice(0, 30)}... | Ruta: ${c.trayecto} hrs)`;
     select.appendChild(option);
   });
+  if (valorPrevio) select.value = valorPrevio;
 }
 
 function guardarEnvio(e) {
   e.preventDefault();
-  const editIndex = parseInt(document.getElementById('envio-edit-index').value);
+  const editId = document.getElementById('envio-edit-id').value;
   const delivery = document.getElementById('envio-delivery').value.trim();
   const [cliente, direccion, trayectoStr] = document.getElementById('envio-cliente').value.split('|');
   const trayecto = parseFloat(trayectoStr);
@@ -776,49 +951,33 @@ function guardarEnvio(e) {
 
   const limite = calcularHoraLimiteSalida(fechaEntrega, horaEntrega, trayecto);
 
-  if (editIndex === -1) {
-    embarques.push({
-      delivery,
-      cliente,
-      direccion,
-      trayecto,
-      toneladas,
-      fechaEntrega,
-      horaEntrega,
-      comentario,
-      horaLimite: limite.horaStr,
-      fechaLimite: limite.fechaStr,
-      limiteTimestamp: limite.timestamp,
-      estado: 'Pendiente',
-      salidaReal: null,
-      fechaSalidaReal: null,
-      horaSalidaReal: null
-    });
-    alert('Solicitud de embarque registrada exitosamente.');
+  if (!editId) {
+    refEmbarques.push({
+      delivery, cliente, direccion, trayecto, toneladas, fechaEntrega, horaEntrega, comentario,
+      horaLimite: limite.horaStr, fechaLimite: limite.fechaStr, limiteTimestamp: limite.timestamp,
+      estado: 'Pendiente', salidaReal: null, fechaSalidaReal: null, horaSalidaReal: null
+    }).then(() => {
+      alert('Solicitud de embarque registrada y sincronizada.');
+      document.getElementById('form-envio').reset();
+      switchTab('general');
+    }).catch(err => alert('Error al guardar en Firebase: ' + err.message));
   } else {
-    embarques[editIndex].delivery = delivery;
-    embarques[editIndex].cliente = cliente;
-    embarques[editIndex].direccion = direccion;
-    embarques[editIndex].trayecto = trayecto;
-    embarques[editIndex].toneladas = toneladas;
-    embarques[editIndex].fechaEntrega = fechaEntrega;
-    embarques[editIndex].horaEntrega = horaEntrega;
-    embarques[editIndex].comentario = comentario;
-    embarques[editIndex].horaLimite = limite.horaStr;
-    embarques[editIndex].fechaLimite = limite.fechaStr;
-    embarques[editIndex].limiteTimestamp = limite.timestamp;
-    alert('Embarque actualizado exitosamente.');
-    cancelarEdicionEnvio();
+    refEmbarques.child(editId).update({
+      delivery, cliente, direccion, trayecto, toneladas, fechaEntrega, horaEntrega, comentario,
+      horaLimite: limite.horaStr, fechaLimite: limite.fechaStr, limiteTimestamp: limite.timestamp
+    }).then(() => {
+      alert('Embarque actualizado en tiempo real.');
+      cancelarEdicionEnvio();
+      switchTab('general');
+    }).catch(err => alert('Error al actualizar en Firebase: ' + err.message));
   }
-
-  document.getElementById('form-envio').reset();
-  renderizarTablas();
-  switchTab('general');
 }
 
-function editarEnvio(index) {
-  const item = embarques[index];
-  document.getElementById('envio-edit-index').value = index;
+function editarEnvio(id) {
+  const item = embarques.find(e => e.id === id);
+  if (!item) return;
+
+  document.getElementById('envio-edit-id').value = id;
   document.getElementById('envio-delivery').value = item.delivery;
   
   const select = document.getElementById('envio-cliente');
@@ -843,7 +1002,7 @@ function editarEnvio(index) {
 }
 
 function cancelarEdicionEnvio() {
-  document.getElementById('envio-edit-index').value = '-1';
+  document.getElementById('envio-edit-id').value = '';
   document.getElementById('form-envio').reset();
   document.getElementById('titulo-form-envio').textContent = 'Nueva Solicitud de Embarque';
   document.getElementById('btn-submit-envio').textContent = 'Programar Solicitud de Embarque';
@@ -851,12 +1010,13 @@ function cancelarEdicionEnvio() {
   document.getElementById('btn-cancel-envio').style.display = 'none';
 }
 
-function eliminarEnvio(index) {
-  const item = embarques[index];
+function eliminarEnvio(id) {
+  const item = embarques.find(e => e.id === id);
+  if (!item) return;
   if (confirm(`¿Estás seguro de eliminar el embarque con Delivery "${item.delivery}"?`)) {
-    embarques.splice(index, 1);
-    renderizarTablas();
-    alert('Embarque eliminado.');
+    refEmbarques.child(id).remove()
+      .then(() => alert('Embarque eliminado.'))
+      .catch(err => alert('Error al eliminar: ' + err.message));
   }
 }
 
@@ -864,24 +1024,19 @@ function resetearMapaCliente() {
   document.getElementById('cliente-lat').value = '';
   document.getElementById('cliente-lon').value = '';
   document.getElementById('btn-clear-search').style.display = 'none';
+  setRutaStatus('');
   actualizarLinksExternos(null, null);
 
   if (mapaCliente) {
-    if (marcadorDestino) {
-      mapaCliente.removeLayer(marcadorDestino);
-      marcadorDestino = null;
-    }
-    if (capaRuta) {
-      mapaCliente.removeLayer(capaRuta);
-      capaRuta = null;
-    }
+    if (marcadorDestino) { mapaCliente.removeLayer(marcadorDestino); marcadorDestino = null; }
+    if (capaRuta) { mapaCliente.removeLayer(capaRuta); capaRuta = null; }
     mapaCliente.setView([ORIGEN_POSCO.lat, ORIGEN_POSCO.lon], 7);
   }
 }
 
 function guardarCliente(e) {
   e.preventDefault();
-  const editIndex = parseInt(document.getElementById('cliente-edit-index').value);
+  const editId = document.getElementById('cliente-edit-id').value;
   const nombre = document.getElementById('cliente-nombre').value.trim();
   const direccion = document.getElementById('cliente-direccion-input').value.trim();
   const trayecto = parseFloat(document.getElementById('cliente-trayecto').value);
@@ -890,29 +1045,28 @@ function guardarCliente(e) {
   const lat = latVal ? parseFloat(latVal) : null;
   const lon = lonVal ? parseFloat(lonVal) : null;
 
-  if (editIndex === -1) {
-    catalogoClientes.push({ nombre, direccion, trayecto, lat, lon });
-    alert('Cliente y destino agregados al catálogo.');
-  } else {
-    catalogoClientes[editIndex].nombre = nombre;
-    catalogoClientes[editIndex].direccion = direccion;
-    catalogoClientes[editIndex].trayecto = trayecto;
-    catalogoClientes[editIndex].lat = lat;
-    catalogoClientes[editIndex].lon = lon;
-    alert('Cliente actualizado en el catálogo.');
-    cancelarEdicionCliente();
-  }
+  const datosCliente = { nombre, direccion, trayecto, lat, lon };
 
-  document.getElementById('form-cliente').reset();
-  document.getElementById('cliente-distancia').value = '';
-  resetearMapaCliente();
-  actualizarSelectClientes();
-  renderizarTablaClientes();
+  if (!editId) {
+    refClientes.push(datosCliente).then(() => {
+      alert('Cliente y destino guardados en Firebase.');
+      document.getElementById('form-cliente').reset();
+      document.getElementById('cliente-distancia').value = '';
+      resetearMapaCliente();
+    }).catch(err => alert('Error al guardar cliente: ' + err.message));
+  } else {
+    refClientes.child(editId).update(datosCliente).then(() => {
+      alert('Cliente actualizado en el catálogo.');
+      cancelarEdicionCliente();
+    }).catch(err => alert('Error al actualizar cliente: ' + err.message));
+  }
 }
 
-function editarCliente(index) {
-  const c = catalogoClientes[index];
-  document.getElementById('cliente-edit-index').value = index;
+function editarCliente(id) {
+  const c = catalogoClientes.find(cli => cli.id === id);
+  if (!c) return;
+
+  document.getElementById('cliente-edit-id').value = id;
   document.getElementById('cliente-nombre').value = c.nombre;
   document.getElementById('cliente-direccion-input').value = c.direccion;
   document.getElementById('btn-clear-search').style.display = 'inline-block';
@@ -938,7 +1092,7 @@ function editarCliente(index) {
 }
 
 function cancelarEdicionCliente() {
-  document.getElementById('cliente-edit-index').value = '-1';
+  document.getElementById('cliente-edit-id').value = '';
   document.getElementById('form-cliente').reset();
   document.getElementById('cliente-distancia').value = '';
   resetearMapaCliente();
@@ -948,13 +1102,13 @@ function cancelarEdicionCliente() {
   document.getElementById('btn-cancel-cliente').style.display = 'none';
 }
 
-function eliminarCliente(index) {
-  const c = catalogoClientes[index];
+function eliminarCliente(id) {
+  const c = catalogoClientes.find(cli => cli.id === id);
+  if (!c) return;
   if (confirm(`¿Estás seguro de eliminar al cliente "${c.nombre}" del catálogo?`)) {
-    catalogoClientes.splice(index, 1);
-    actualizarSelectClientes();
-    renderizarTablaClientes();
-    alert('Cliente eliminado del catálogo.');
+    refClientes.child(id).remove()
+      .then(() => alert('Cliente eliminado del catálogo.'))
+      .catch(err => alert('Error al eliminar cliente: ' + err.message));
   }
 }
 
@@ -963,31 +1117,30 @@ function renderizarTablaClientes() {
   if (!tbody) return;
   tbody.innerHTML = '';
 
-  catalogoClientes.forEach((c, index) => {
+  catalogoClientes.forEach(c => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td><b>${c.nombre}</b></td>
       <td>${c.direccion}</td>
       <td><b>${c.trayecto} hrs</b></td>
       <td>
-        <button class="btn-edit" onclick="editarCliente(${index})">✏️ Editar</button>
-        <button class="btn-delete" onclick="eliminarCliente(${index})">🗑️ Borrar</button>
+        <button class="btn-edit" onclick="editarCliente('${c.id}')">✏️ Editar</button>
+        <button class="btn-delete" onclick="eliminarCliente('${c.id}')">🗑️ Borrar</button>
       </td>
     `;
     tbody.appendChild(tr);
   });
 }
 
-function cambiarEstadoAnden(index) {
-  if (embarques[index].estado === 'En Andén') {
-    embarques[index].estado = 'Pendiente';
-  } else {
-    embarques[index].estado = 'En Andén';
-  }
-  renderizarTablas();
+function cambiarEstadoAnden(id) {
+  const item = embarques.find(e => e.id === id);
+  if (!item) return;
+  const nuevoEstado = (item.estado === 'En Andén') ? 'Pendiente' : 'En Andén';
+  refEmbarques.child(id).update({ estado: nuevoEstado })
+    .catch(err => alert('Error al actualizar estado: ' + err.message));
 }
 
-function confirmarSalida(index) {
+function confirmarSalida(id) {
   const ahora = new Date();
   const anio = ahora.getFullYear();
   const mes = String(ahora.getMonth() + 1).padStart(2, '0');
@@ -995,11 +1148,12 @@ function confirmarSalida(index) {
   const fechaISO = `${anio}-${mes}-${dia}`;
   const horaStr = ahora.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
-  embarques[index].salidaReal = `${fechaISO} ${horaStr}`;
-  embarques[index].fechaSalidaReal = fechaISO;
-  embarques[index].horaSalidaReal = horaStr;
-  embarques[index].estado = 'Confirmada';
-  renderizarTablas();
+  refEmbarques.child(id).update({
+    salidaReal: `${fechaISO} ${horaStr}`,
+    fechaSalidaReal: fechaISO,
+    horaSalidaReal: horaStr,
+    estado: 'Confirmada'
+  }).catch(err => alert('Error al confirmar salida: ' + err.message));
 }
 
 function filtrarConfirmadasPorFecha() {
@@ -1024,7 +1178,7 @@ function renderizarTablas() {
 
   renderizarTablaClientes();
 
-  embarques.forEach((item, index) => {
+  embarques.forEach(item => {
     const semaforo = evaluarSemaforo(item);
 
     if (tbodyGeneral) {
@@ -1036,15 +1190,11 @@ function renderizarTablas() {
         <td>${item.fechaEntrega}</td>
         <td>${item.horaEntrega} hrs</td>
         <td><b>${item.horaLimite} hrs</b> (${item.fechaLimite})</td>
-        <td>
-          <span class="semaforo-dot ${semaforo.clase}">
-            <span class="dot"></span> ${semaforo.texto}
-          </span>
-        </td>
+        <td><span class="semaforo-dot ${semaforo.clase}"><span class="dot"></span> ${semaforo.texto}</span></td>
         <td>${item.salidaReal ? item.salidaReal : 'En Patio'}</td>
         <td>
-          <button class="btn-edit" onclick="editarEnvio(${index})">✏️ Editar</button>
-          <button class="btn-delete" onclick="eliminarEnvio(${index})">🗑️ Borrar</button>
+          <button class="btn-edit" onclick="editarEnvio('${item.id}')">✏️ Editar</button>
+          <button class="btn-delete" onclick="eliminarEnvio('${item.id}')">🗑️ Borrar</button>
         </td>
       `;
       tbodyGeneral.appendChild(trGen);
@@ -1058,23 +1208,17 @@ function renderizarTablas() {
         <td><b>${item.cliente}</b><br><small style="color:#64748b">${item.direccion}</small></td>
         <td>${item.toneladas} Tn</td>
         <td><b>${item.horaLimite} hrs</b><br><small>${item.fechaLimite}</small></td>
+        <td><span class="semaforo-dot ${semaforo.clase}"><span class="dot"></span> ${semaforo.texto}</span></td>
         <td>
-          <span class="semaforo-dot ${semaforo.clase}">
-            <span class="dot"></span> ${semaforo.texto}
-          </span>
-        </td>
-        <td>
-          <button class="btn-anden" onclick="cambiarEstadoAnden(${index})">${esAnden ? '↩ Pasar a Pendiente' : '🚚 Pasar a Andén'}</button>
-          <button class="btn-confirmar" onclick="confirmarSalida(${index})">Confirmar Salida</button>
+          <button class="btn-anden" onclick="cambiarEstadoAnden('${item.id}')">${esAnden ? '↩ Pasar a Pendiente' : '🚚 Pasar a Andén'}</button>
+          <button class="btn-confirmar" onclick="confirmarSalida('${item.id}')">Confirmar Salida</button>
         </td>
       `;
       tbodySalidasPendientes.appendChild(trPend);
     }
 
     if (item.salidaReal && tbodySalidasConfirmadas) {
-      if (fechaFiltroSeleccionada && item.fechaSalidaReal !== fechaFiltroSeleccionada) {
-        return;
-      }
+      if (fechaFiltroSeleccionada && item.fechaSalidaReal !== fechaFiltroSeleccionada) return;
 
       const trConf = document.createElement('tr');
       trConf.innerHTML = `
@@ -1084,11 +1228,7 @@ function renderizarTablas() {
         <td>${item.toneladas} Tn</td>
         <td>${item.fechaEntrega} - ${item.horaEntrega} hrs</td>
         <td>${item.horaLimite} hrs (${item.fechaLimite})</td>
-        <td>
-          <span class="semaforo-dot ${semaforo.clase}">
-            <span class="dot"></span> ${semaforo.texto}
-          </span>
-        </td>
+        <td><span class="semaforo-dot ${semaforo.clase}"><span class="dot"></span> ${semaforo.texto}</span></td>
         <td><b style="color:#059669">${item.salidaReal}</b></td>
       `;
       tbodySalidasConfirmadas.appendChild(trConf);
@@ -1097,12 +1237,10 @@ function renderizarTablas() {
 }
 
 function descargarReporteSalidas() {
-  let confirmadas = embarques.filter(e => e.salidaReal !== null);
-  
+  let confirmadas = embarques.filter(e => e.salidaReal);
   if (fechaFiltroSeleccionada) {
     confirmadas = confirmadas.filter(e => e.fechaSalidaReal === fechaFiltroSeleccionada);
   }
-
   if (confirmadas.length === 0) {
     alert('No hay unidades confirmadas en la fecha seleccionada.');
     return;
@@ -1110,7 +1248,6 @@ function descargarReporteSalidas() {
 
   let csvContent = '\uFEFF';
   csvContent += 'Delivery,Cliente,Direccion Destino,Toneladas,Fecha Entrega,Hora Entrega,Salida Limite,Estado,Fecha y Hora Salida Real\n';
-
   confirmadas.forEach(e => {
     csvContent += `"${e.delivery}","${e.cliente}","${e.direccion}","${e.toneladas}","${e.fechaEntrega}","${e.horaEntrega}","${e.horaLimite}","Salida Confirmada","${e.salidaReal}"\n`;
   });
